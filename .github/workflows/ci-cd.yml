@@ -23,11 +23,6 @@ jobs:
       - name: Verifier la syntaxe
         run: node -e "console.log('Syntax check OK')"
 
-      - name: Test de demarrage
-        run: |
-          timeout 5 npm start || true
-          echo "App start test passed"
-
   docker-build:
     name: Docker Build
     runs-on: ubuntu-latest
@@ -55,29 +50,19 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/resources/codebase_partner
-
-            # Recuperer le dernier code
             git pull origin main || true
-
-            # Rebuild image Docker
             docker build -t students-app .
-
-            # Arreter ancien conteneur
             docker stop students-app 2>/dev/null || true
             docker rm students-app 2>/dev/null || true
-
-            # Relancer avec la nouvelle image
             docker run -d \
               --name students-app \
               --restart unless-stopped \
               -p 80:80 \
-              -e APP_DB_HOST=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4) \
+              -e APP_DB_HOST=students-db.cw5ihhd7nmgp.us-east-1.rds.amazonaws.com \
               -e APP_DB_USER=nodeapp \
               -e APP_DB_PASSWORD=student12 \
               -e APP_DB_NAME=STUDENTS \
               -e APP_PORT=80 \
               students-app
-
-            # Verification
             sleep 5
             curl -f http://localhost:80/ && echo "DEPLOY OK" || echo "DEPLOY FAILED"
